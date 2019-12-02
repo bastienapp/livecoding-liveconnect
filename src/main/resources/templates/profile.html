@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign In</title>
+</head>
+<body>
+<section th:object="${user}">
+    <label for="email-id">Email</label><br>
+    <input id="email-id" disabled th:field="*{email}" type="email"><br>
+</section>
+<br>
+<a href="/user/sign-out">Disconnect</a>
+</body>
+</html>

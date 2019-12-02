@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up</title>
+</head>
+<body>
+<form action="/user/sign-up" method="post" th:object="${user}">
+    <label for="email-id">Email</label><br>
+    <input id="email-id" placeholder="email@here.com" required th:field="*{email}" type="email"><br>
+    <label for="password-id">Password</label><br>
+    <input id="password-id" placeholder="********" required th:field="*{password}"
+           type="password"><br>
+    <br>
+    <input type="submit" value="Sign Up">
+</form>
+<br>
+<a href="/user/sign-in">Sign In</a>
+</body>
+</html>
