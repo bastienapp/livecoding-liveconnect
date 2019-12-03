@@ -23,6 +23,7 @@ public class UserController {
 
     @GetMapping("/")
     public String index() {
+        // TODO : check token and log user if possible
         return "redirect:/user/sign-in";
     }
 
@@ -36,6 +37,7 @@ public class UserController {
     @PostMapping("/user/sign-in")
     public String postSignIn(@ModelAttribute User user, HttpSession session) {
 
+        // TODO : save salted keyword in config file
         String encrypedPassword = Hashing.sha256()
                 .hashString("!t4c0$" + user.getPassword(), StandardCharsets.UTF_8)
                 .toString();
@@ -45,6 +47,7 @@ public class UserController {
             user = optionalUser.get();
 
             session.setAttribute("sessionUser", user);
+            // TODO : store the token
 
             return "redirect:/user/profile";
         }
@@ -62,12 +65,15 @@ public class UserController {
     @PostMapping("/user/sign-up")
     public String postSignUp(@ModelAttribute User user, HttpSession session) {
 
+        // TODO : test if mail already exists instead of try/catch
         try {
+            // TODO : save salted keyword in config file
             String encrypedPassword = Hashing.sha256()
                     .hashString("!t4c0$" + user.getPassword(), StandardCharsets.UTF_8)
                     .toString();
             user.setPassword(encrypedPassword);
             user = userRepository.save(user);
+            // TODO : store the token
         } catch (Exception e) {
             // TODO : add error message
             return "sign-up";
