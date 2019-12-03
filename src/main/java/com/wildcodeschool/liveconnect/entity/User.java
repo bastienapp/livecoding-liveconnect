@@ -3,6 +3,7 @@ package com.wildcodeschool.liveconnect.entity;
 import javax.persistence.*;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotNull;
+import java.util.Date;
 
 @Entity
 public class User {
@@ -18,6 +19,12 @@ public class User {
 
     @NotNull
     private String password;
+
+    @Column(unique = true)
+    @NotNull
+    private String session;
+
+    private Date sessionExpiration;
 
     public User() {
     }
@@ -44,5 +51,21 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getSession() {
+        return session;
+    }
+
+    public void setSession(String session) {
+        this.session = session;
+    }
+
+    public Date getSessionExpiration() {
+        return sessionExpiration;
+    }
+
+    public void setSessionExpiration(Date sessionExpiration) {
+        this.sessionExpiration = sessionExpiration;
     }
 }

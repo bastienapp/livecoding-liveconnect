@@ -3,16 +3,21 @@ package com.wildcodeschool.liveconnect.controller;
 import com.google.common.hash.Hashing;
 import com.wildcodeschool.liveconnect.entity.User;
 import com.wildcodeschool.liveconnect.repository.UserRepository;
-import org.hibernate.exception.ConstraintViolationException;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Optional;
 
 @Controller
@@ -22,8 +27,20 @@ public class UserController {
     private UserRepository userRepository;
 
     @GetMapping("/")
-    public String index() {
-        // TODO : check token and log user if possible
+    public String index(@CookieValue(name = "sessionId", required = false) String sessionId,
+                        HttpSession session) {
+
+        if (sessionId != null && !sessionId.isEmpty()) {
+            Optional<User> optionalUser = userRepository.findBySession(sessionId);
+            if (optionalUser.isPresent()) {
+                User user = optionalUser.get();
+                if (user.getSessionExpiration().after(new Date())) {
+                    session.setAttribute("sessionUser", user);
+                    return "redirect:/user/profile";
+                }
+            }
+        }
+
         return "redirect:/user/sign-in";
     }
 
@@ -35,7 +52,7 @@ public class UserController {
     }
 
     @PostMapping("/user/sign-in")
-    public String postSignIn(@ModelAttribute User user, HttpSession session) {
+    public String postSignIn(@ModelAttribute User user, HttpSession session, HttpServletResponse response) {
 
         // TODO : save salted keyword in config file
         String encrypedPassword = Hashing.sha256()
@@ -45,6 +62,8 @@ public class UserController {
         Optional<User> optionalUser = userRepository.findByEmailAndPassword(user.getEmail(), user.getPassword());
         if (optionalUser.isPresent()) {
             user = optionalUser.get();
+            user = refreshSession(user, response);
+            userRepository.save(user);
 
             session.setAttribute("sessionUser", user);
             // TODO : store the token
@@ -55,6 +74,23 @@ public class UserController {
         return "sign-in";
     }
 
+    private static User refreshSession(User user, HttpServletResponse response) {
+        String sessionId = RandomStringUtils.randomAlphabetic(30);
+        user.setSession(sessionId);
+
+        Calendar c = Calendar.getInstance();
+        c.setTime(new Date());
+        c.add(Calendar.MONTH, 1);
+        user.setSessionExpiration(c.getTime());
+
+        Cookie sessionCookie = new Cookie("sessionId", user.getSession());
+        sessionCookie.setMaxAge(30 * 24 * 60 * 60);
+        sessionCookie.setPath("/"); // cookie is accessible from everywhere
+        response.addCookie(sessionCookie);
+
+        return user;
+    }
+
     @GetMapping("/user/sign-up")
     public String getSignUp(Model out) {
         out.addAttribute("user", new User());
@@ -63,7 +99,7 @@ public class UserController {
     }
 
     @PostMapping("/user/sign-up")
-    public String postSignUp(@ModelAttribute User user, HttpSession session) {
+    public String postSignUp(@ModelAttribute User user, HttpSession session, HttpServletResponse response) {
 
         // TODO : test if mail already exists instead of try/catch
         try {
@@ -72,8 +108,8 @@ public class UserController {
                     .hashString("!t4c0$" + user.getPassword(), StandardCharsets.UTF_8)
                     .toString();
             user.setPassword(encrypedPassword);
-            user = userRepository.save(user);
-            // TODO : store the token
+            user = refreshSession(user, response);
+            userRepository.save(user);
         } catch (Exception e) {
             // TODO : add error message
             return "sign-up";
@@ -88,7 +124,7 @@ public class UserController {
     public String getProfile(HttpSession session, Model out) {
         User user = (User) session.getAttribute("sessionUser");
         if (user == null) {
-            return "redirect:/user/sign-in";
+            return "redirect:/";
         }
         out.addAttribute("user", user);
 
@@ -96,8 +132,13 @@ public class UserController {
     }
 
     @GetMapping("/user/sign-out")
-    public String getSignOut(HttpSession session) {
+    public String getSignOut(HttpSession session, HttpServletResponse response) {
         session.removeAttribute("sessionUser");
+
+        Cookie sessionCookie = new Cookie("sessionId", null);
+        sessionCookie.setPath("/");
+        sessionCookie.setMaxAge(0);
+        response.addCookie(sessionCookie);
 
         return "redirect:/user/sign-in";
     }
